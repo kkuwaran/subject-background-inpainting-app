@@ -27,7 +27,8 @@ def mask_to_rgb(mask: np.ndarray) -> np.ndarray:
 
 
 def get_processed_inputs(processor: SamProcessor, model: SamModel, image: Image.Image, 
-                         input_points: np.ndarray, device: str = "cpu") -> np.ndarray:
+                         input_points: np.ndarray, device: str = "cpu", 
+                         verbose: bool = False) -> np.ndarray:
     """
     Processes an image and input points to generate masks using the SAM model.
     Args:
@@ -52,10 +53,6 @@ def get_processed_inputs(processor: SamProcessor, model: SamModel, image: Image.
     original_sizes = inputs["original_sizes"].cpu()
     reshaped_input_sizes = inputs["reshaped_input_sizes"].cpu()
 
-    print(f"Prediction masks shape: {pred_masks.shape}")
-    print(f"Original sizes shape: {original_sizes.shape}")
-    print(f"Reshaped input sizes shape: {reshaped_input_sizes.shape}")
-
     # Post-process masks to match the original image size
     masks = processor.image_processor.post_process_masks(
         pred_masks, original_sizes, reshaped_input_sizes
@@ -66,6 +63,13 @@ def get_processed_inputs(processor: SamProcessor, model: SamModel, image: Image.
 
     # Invert the mask: 0 represents the subject, 1 represents the background
     inv_best_mask = ~best_mask.cpu().numpy()
+
+    if verbose:
+        print(f"Prediction masks shape: {pred_masks.shape}")
+        print(f"Original sizes shape: {original_sizes.shape}")
+        print(f"Reshaped input sizes shape: {reshaped_input_sizes.shape}")
+        print(f"Inverted best mask shape: {inv_best_mask.shape}")
+
     return inv_best_mask
 
 
