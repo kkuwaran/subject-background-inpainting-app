@@ -1,14 +1,16 @@
 import gradio as gr
-import numpy as np
-from PIL import Image, ImageDraw
-from typing import Optional, Any, Callable, List, Tuple
+# import numpy as np
+# from PIL import Image, ImageDraw
+# from typing import Optional, Any, Callable, List, Tuple
+
+from transformers import SamProcessor, SamModel
+from diffusers import AutoPipelineForInpainting
+
+from sam_app_utils import ImageSegmentationInpainting
 
 
 
-
-
-def generate_app(get_processed_inputs: Callable[[Image.Image, List[List[int]]], np.ndarray],
-                 inpaint: Callable[[Image.Image, np.ndarray, str, str, int, float], Image.Image]):
+def generate_app(processor: SamProcessor, model: SamModel, pipeline: AutoPipelineForInpainting, device: str = 'cpu'):
     """
     Generates a Gradio app for interactive image segmentation and inpainting using SAM (Segment Anything Model).
     Args:
@@ -16,14 +18,11 @@ def generate_app(get_processed_inputs: Callable[[Image.Image, List[List[int]]], 
     - inpaint: Function that performs inpainting on the input image based on the segmentation mask.
     """
 
-    global input_points
-    global input_image
+    # global input_points
+    # global input_image
 
-
-    
-
-
-
+    image_processor = ImageSegmentationInpainting(processor, model, pipeline, device)
+    img_size = {'height': image_processor.IMG_SIZE, 'width': image_processor.IMG_SIZE}
 
     with gr.Blocks() as demo:
 
@@ -44,14 +43,14 @@ def generate_app(get_processed_inputs: Callable[[Image.Image, List[List[int]]], 
 
         # Input and output sections
         with gr.Row():
-            display_img = gr.Image(label="Input", interactive=True, type='pil', height=IMG_SIZE, width=IMG_SIZE)
-            sam_mask = gr.AnnotatedImage(label="SAM result", interactive=False, height=IMG_SIZE, width=IMG_SIZE)
-            result = gr.Image(label="Output", interactive=False, type='pil', height=IMG_SIZE, width=IMG_SIZE)
+            display_img = gr.Image(label="Input", interactive=True, type='pil', **img_size)
+            sam_mask = gr.AnnotatedImage(label="SAM result", interactive=False, **img_size)
+            result = gr.Image(label="Output", interactive=False, type='pil', **img_size)
 
         # Events
-        display_img.select(get_points, inputs=[display_img], outputs=[sam_mask, display_img])
-        display_img.clear(reset_points)
-        display_img.change(preprocess, inputs=[display_img], outputs=[display_img])
+        display_img.select(image_processor.get_points, inputs=[display_img], outputs=[sam_mask, display_img])
+        display_img.clear(image_processor.reset_points)
+        display_img.change(image_processor.preprocess, inputs=[display_img], outputs=[display_img])
 
         # Inpainting controls
         with gr.Row():
@@ -63,22 +62,22 @@ def generate_app(get_processed_inputs: Callable[[Image.Image, List[List[int]]], 
             prompt = gr.Textbox(label="Prompt for infill")
             neg_prompt = gr.Textbox(label="Negative prompt")
             reset_button = gr.ClearButton(value="Reset", components=[display_img, sam_mask, result, prompt, neg_prompt, checkbox])
-            reset_button.click(reset_points)
+            reset_button.click(image_processor.reset_points)
             submit_inpaint = gr.Button(value="Run inpaint")
 
         # Example section
         with gr.Row():
             examples = gr.Examples(
                 [
-                    ["car.png", "a car driving on planet Mars", "artifacts", 74294536],
-                    ["dragon.jpeg", "a dragon in a medieval village", "artifacts", 97],
-                    ["monalisa.png", "a fantasy landscape with flying dragons", "artifacts", 97]
+                    ["images/car.png", "a car driving on planet Mars", "artifacts", 74294536],
+                    ["images/dragon.jpeg", "a dragon in a medieval village", "artifacts", 97],
+                    ["images/monalisa.png", "a fantasy landscape with flying dragons", "artifacts", 97]
                 ],
                 inputs=[display_img, prompt, neg_prompt, random_seed]
             )
 
         # Run inpaint button
-        submit_inpaint.click(run, inputs=[prompt, neg_prompt, cfg, random_seed, checkbox], outputs=[result])
+        submit_inpaint.click(image_processor.run, inputs=[prompt, neg_prompt, cfg, checkbox, random_seed], outputs=[result])
 
     demo.queue(max_size=1).launch(share=True, debug=True)
     return demo
