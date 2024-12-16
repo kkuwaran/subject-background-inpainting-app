@@ -53,10 +53,15 @@ This app leverages the power of **Segment Anything Model (SAM)** for segmentatio
    - Stable Diffusion Inpainting: `diffusers/stable-diffusion-xl-1.0-inpainting-0.1`
   
 ### Running the App
-Run the following command to launch the app locally:
-```bash
-python main.ipynb
-```
+
+1. Run the following command to launch the app locally:
+   ```bash
+   python main.ipynb
+   ```
+2. Access the web interface through the URL provided in the terminal:
+   ```plaintext
+   Running on public URL: https://07d1734334791a1272.gradio.live
+   ```
 
 
 ## Usage Instructions
